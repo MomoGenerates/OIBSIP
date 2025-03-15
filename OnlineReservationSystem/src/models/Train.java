@@ -53,18 +53,11 @@ public class Train implements Serializable {
         }
     }
 
-    public void displayTrainDetails(AnimatedText animate){
-        List<Train> trains = new DatabaseManager().loadTrains();
-
+    public void displayTrainDetails(AnimatedText animate) {
         animate.animateText(String.format("%-6s | %-25s | %-15s | %-15s | %-13s | %-10s | %-17s",
-        "Train#", "Train Name", "Source", "Destination", "Seats Avl/Tot", "Base Fare", "Departure - Arrival"), 25);
-    
-        trains.forEach(train -> {
-            animate.animateText(String.format("%-6s | %-25s | %-15s | %-15s | %-13s | %-10s | %-17s",
-            train.getTrainNumber(), train.getTrainName(), train.getSource(), train.getDestination(),
-            train.getAvailableSeats() + "/" + train.getTotalSeats(), train.getFare(), 
-            train.getDepartureTime() + " - " + train.getArrivalTime()),25);
-        });
+            trainNumber, trainName, source, destination,
+            availableSeats + "/" + totalSeats, fare, 
+            departureTime + " - " + arrivalTime), 25);
     }
 
     public void displayStoppages(AnimatedText animate) {
@@ -153,18 +146,20 @@ public class Train implements Serializable {
     }
     
     public void updateTrainDetails(Scanner sc, AnimatedText animate) { 
+        boolean changed = false;
+
         while (true) {
             animate.animateText("""
                 === Update Train Details ===
-                \u2192 Train Name
-                \u2192 Source
-                \u2192 Destination
-                \u2192 Total Seats
-                \u2192 Base Fare
-                \u2192 Departure Time
-                \u2192 Arrival Time
-                \u2192 Manage Stoppages
-                \u2192 Back to Previous Menu
+                → Train Name
+                → Source
+                → Destination
+                → Total Seats
+                → Base Fare
+                → Departure Time
+                → Arrival Time
+                → Manage Stoppages
+                → Back to Previous Menu
                 
                 Enter your choice: """, 25);
             
@@ -174,94 +169,120 @@ public class Train implements Serializable {
                 case "train name", "name" -> {
                     animate.animateText("Enter new Train Name: ", 25);
                     setTrainName(sc.nextLine());
+                    changed = true;
                 }
                 case "source" -> {
                     animate.animateText("Enter new Source: ", 25);
                     setSource(sc.nextLine());
+                    changed = true;
                 }
                 case "destination" -> {
                     animate.animateText("Enter new Destination: ", 25);
                     setDestination(sc.nextLine());
+                    changed = true;
                 }
                 case "total seats" -> {
                     animate.animateText("Enter new Total Seats: ", 25);
-                    int newSeats = sc.nextInt(); sc.nextLine();
-                    
-                    if (newSeats < getTotalSeats() - getAvailableSeats()) {
-                        animate.animateText("Error: New total seats cannot be less than currently occupied seats", 25);
-                    } else {
-                        setTotalSeats(newSeats);
-                        setAvailableSeats(newSeats - getTotalSeats() - getAvailableSeats());
+                    try {
+                        int newSeats = Integer.parseInt(sc.nextLine());
+                        if (newSeats < totalSeats - availableSeats) {
+                            animate.animateText("Error: New total seats cannot be less than currently occupied seats\n", 25);
+                        } else {
+                            setTotalSeats(newSeats);
+                            setAvailableSeats(newSeats - (totalSeats - availableSeats));
+                            changed = true;
+                        }
+                    } catch (NumberFormatException e) {
+                        animate.animateText("Please enter a valid number\n", 25);
                     }
                 }
                 case "base fare" -> {
                     animate.animateText("Enter new Base Fare: ", 25);
-                    setFare(sc.nextDouble()); sc.nextLine();
+                    try {
+                        setFare(Double.parseDouble(sc.nextLine()));
+                        changed = true;
+                    } catch (NumberFormatException e) {
+                        animate.animateText("Please enter a valid fare amount\n", 25);
+                    }
                 }
                 case "departure time" -> {
                     animate.animateText("Enter new Departure Time (HH:mm): ", 25);
                     setDepartureTime(sc.nextLine());
+                    changed = true;
                 }
                 case "arrival time" -> {
                     animate.animateText("Enter new Arrival Time (HH:mm): ", 25);
                     setArrivalTime(sc.nextLine());
+                    changed = true;
                 }
                 case "manage stoppages", "stoppage" -> {
-                    while (true) {
-                        animate.animateText("""
-                            === Manage Stoppages ===
-                            \u2192 View Stops
-                            \u2192 Add Stop
-                            \u2192 Remove Stop
-                            \u2192 Change Stop details
-                            \u2192 Back to Train Details
-                            
-                            Enter your choice: """, 25);
-                        
-                        String stopChoice = sc.nextLine().toLowerCase();
-                        
-                        switch (stopChoice) {
-                            case "view stops", "view" -> displayStoppages(animate);
-                            case "add stop", "add" -> {
-                                animate.animateText("Enter position to add stoppage: ", 25);
-                                int position = Integer.parseInt(sc.nextLine()) - 2;
-                                Stoppage newStop = new Stoppage(sc, animate);
-                                addStop(animate, position, newStop);
-                            }
-                            case "remove stop", "remove" -> {
-                                displayStoppages(animate);
-                                animate.animateText("Enter position of stop to remove (2 to " + (stoppages.size() + 1) + "): ", 25);
-                                int position = Integer.parseInt(sc.nextLine()) - 2;
-                                if (position >= 0 && position < stoppages.size()) {
-                                    stoppages.remove(position);
-                                    animate.animateText("Stop removed successfully.\n", 25);
-                                } else {
-                                    animate.animateText("Invalid position!\n", 25);
-                                }
-                            }
-                            case "change stop details", "change" -> {
-                                displayStoppages(animate);
-                                animate.animateText("Enter position of stop to modify (2 to " + (stoppages.size() + 1) + "): ", 25);
-                                int position = Integer.parseInt(sc.nextLine()) - 2;
-                                if (position >= 0 && position < stoppages.size()) {
-                                    Stoppage modifiedStop = new Stoppage(sc, animate);
-                                    stoppages.set(position, modifiedStop);
-                                    animate.animateText("Stop details updated successfully.\n", 25);
-                                } else {
-                                    animate.animateText("Invalid position!\n", 25);
-                                }
-                            }
-                            case "back", "exit" -> {
-                                animate.animateText("Returning to Train Details menu...\n", 25);
-                                break;
-                            }
-                            default -> animate.animateText("Invalid choice! Please try again.\n", 25);
-                        }
-                        if (stopChoice.equals("back") || stopChoice.equals("exit")) break;
-                    }
+                    manageStoppages(sc, animate);
+                    changed = true;
                 }
                 case "exit", "back" -> {
+                    if (changed) {
+                        DatabaseManager db = new DatabaseManager();
+                        List<Train> trains = db.loadTrains();
+                        trains.removeIf(t -> t.getTrainNumber().equals(this.trainNumber));
+                        trains.add(this);
+                        db.saveTrains(trains);
+                        animate.animateText("Train details updated successfully!\n", 25);
+                    }
                     animate.animateText("Returning to previous menu...\n", 25);
+                    return;
+                }
+                default -> animate.animateText("Invalid choice! Please try again.\n", 25);
+            }
+        }
+    }
+
+    private void manageStoppages(Scanner sc, AnimatedText animate) {
+        while (true) {
+            animate.animateText("""
+                === Manage Stoppages ===
+                → View Stops
+                → Add Stop
+                → Remove Stop
+                → Change Stop Details
+                → Back to Train Details
+                
+                Enter your choice: """, 25);
+            
+            String stopChoice = sc.nextLine().toLowerCase();
+            
+            switch (stopChoice) {
+                case "view stops", "view" -> displayStoppages(animate);
+                case "add stop", "add" -> {
+                    animate.animateText("Enter position to add stoppage: ", 25);
+                    try {
+                        int position = Integer.parseInt(sc.nextLine()) - 2;
+                        Stoppage newStop = new Stoppage(sc, animate);
+                        addStop(animate, position, newStop);
+                    } catch (NumberFormatException e) {
+                        animate.animateText("Please enter a valid position number\n", 25);
+                    }
+                }
+                case "remove stop", "remove" -> {
+                    if (stoppages.isEmpty()) {
+                        animate.animateText("No stoppages to remove\n", 25);
+                        continue;
+                    }
+                    displayStoppages(animate);
+                    animate.animateText("Enter position of stop to remove (2 to " + (stoppages.size() + 1) + "): ", 25);
+                    try {
+                        int position = Integer.parseInt(sc.nextLine()) - 2;
+                        if (position >= 0 && position < stoppages.size()) {
+                            stoppages.remove(position);
+                            animate.animateText("Stop removed successfully\n", 25);
+                        } else {
+                            animate.animateText("Invalid position!\n", 25);
+                        }
+                    } catch (NumberFormatException e) {
+                        animate.animateText("Please enter a valid position number\n", 25);
+                    }
+                }
+                case "back", "exit" -> {
+                    animate.animateText("Returning to Train Details menu...\n", 25);
                     return;
                 }
                 default -> animate.animateText("Invalid choice! Please try again.\n", 25);

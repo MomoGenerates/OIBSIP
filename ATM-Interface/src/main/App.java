@@ -24,20 +24,23 @@ public class App {
             List<User> users = userManager.getUsers(); 
             animate.animateText("Logging in ", 25);
 
-            while(!UserExist){   //User Name input loop
+            while(!UserExist){   
                 animate.animateText("Enter your Name", 25);
                 final String userName = tempUser = sc.nextLine();
                 if (userName.equalsIgnoreCase("exit")) { System.exit(0); }
 
                 if (users.stream().noneMatch(user -> user.getName().equalsIgnoreCase(userName))) {
                     animate.animateText("User not found in System \nWould you like to make a account ", 25);
-                    if(sc.nextLine().equalsIgnoreCase("yes")) {
+                    String userChoice = sc.nextLine();
+
+                    if(userChoice.equalsIgnoreCase("yes")) {
                         User newUser = new User();
                         newUser.createAcc(sc);
+                        animate.animateText("Account created successfully ", 25);
                         users.add(newUser);
                         userManager.saveUsers(users);
                     }
-                    if(sc.nextLine().equalsIgnoreCase("admin acc")) {
+                    if(userChoice.equalsIgnoreCase("admin acc")) {
                         User newUser = new User(true);
                         newUser.adminCreateAcc(sc);
                         users.add(newUser);
@@ -47,7 +50,7 @@ public class App {
             }
             
             users = userManager.getUsers();
-            while(!validateUser){   //User Pin input loop
+            while(!validateUser){   
                 animate.animateText("Enter your Pin ", 25);
                 final String userPin = sc.nextLine();
 
@@ -62,15 +65,27 @@ public class App {
                     } 
                     return false;
                 })) {
+                    if(currentUser == null) {
+                        validateUser = true;  
+                        UserExist = false;    
+                        break;
+                    }
                     animate.animateText("Welcome "+tempUser, 25);
                     validateUser = true;
                 } else animate.animateText("Invalid Pin ", 25);
             }
 
-            if (currentUser.isAdmin()) {
-                adminMenu(users, sc, animate);
-            } else {
-                userMenu(users, sc, animate);
+            if (currentUser == null) {
+                validateUser = false;  
+                continue;  
+            }
+
+            if (currentUser != null) {
+                if (currentUser.isAdmin()) {
+                    adminMenu(users, sc, animate);
+                } else {
+                    userMenu(users, sc, animate);
+                }
             }
         }
     }
@@ -91,45 +106,111 @@ public class App {
             switch(operation){
                 case "deposit" -> {
                     animate.animateText("Enter the amount to deposit ", 25);
-                    currentUser.deposit(sc.nextDouble());
+                    double amount = sc.nextDouble();
+                    currentUser.deposit(amount);
+                    
+                    // Update user in the list and save
+                    users.stream()
+                        .filter(user -> user.getUserID().equals(currentUser.getUserID()))
+                        .findFirst()
+                        .ifPresent(user -> user.setBalance(currentUser.getBalance()));
+                    userManager.saveUsers(users);
                     sc.nextLine();
                 }
                 case "withdraw" -> {
                     animate.animateText("Enter the amount to withdraw ", 25);
-                    currentUser.withdraw(sc.nextDouble());
+                    double amount = sc.nextDouble();
+                    currentUser.withdraw(amount);
+                    
+                    // Update user in the list and save
+                    users.stream()
+                        .filter(user -> user.getUserID().equals(currentUser.getUserID()))
+                        .findFirst()
+                        .ifPresent(user -> user.setBalance(currentUser.getBalance()));
+                    userManager.saveUsers(users);
                     sc.nextLine();
                 }
                 case "transfer" -> {
-                    boolean trasnferUserNotFound;
+                    boolean transferUserNotFound;
                     int invalidInput = 0;
-                    do{
+                    do {
                         if(invalidInput == 3) {
                             animate.animateText("Too many invalid inputs", 25);
                             break;
                         }
                         animate.animateText("Enter the user to transfer to ", 25);
                         String targetUser = sc.nextLine();
+                        
+                        
+                        users = userManager.getUsers();
                         User transferUser = users.stream()
-                            .filter(user -> user.getName().equalsIgnoreCase(targetUser)).findFirst().orElse(null);
+                            .filter(user -> user.getName().equalsIgnoreCase(targetUser))
+                            .findFirst()
+                            .orElse(null);
 
                         if(transferUser == null) {
                             invalidInput++;
                             animate.animateText("User not found", 25);  
-                            trasnferUserNotFound = true;
+                            transferUserNotFound = true;
+                        } else if(transferUser.getStatus()) {
+                            animate.animateText("This account is frozen", 25);
+                            transferUserNotFound = true;
                         } else {
                             animate.animateText("Enter the amount to transfer ", 25);
                             double transferAmount = sc.nextDouble();
                             sc.nextLine();
+                            
+                            if(transferAmount <= 0) {
+                                animate.animateText("Invalid amount", 25);
+                                transferUserNotFound = true;
+                                continue;
+                            }
+                            
+                            if(transferAmount > currentUser.getBalance()) {
+                                animate.animateText("Insufficient balance", 25);
+                                transferUserNotFound = true;
+                                continue;
+                            }
+
                             currentUser.transferFrom(transferAmount, transferUser);
                             transferUser.transferTo(transferAmount, currentUser.getName());
-                            trasnferUserNotFound = false;
+                            
+                            users.stream()
+                                .filter(user -> user.getUserID().equals(currentUser.getUserID()))
+                                .findFirst()
+                                .ifPresent(user -> {
+                                    user.setBalance(currentUser.getBalance());
+                                    user.setTransactionHistory(currentUser.getTransactionHistory());
+                                });
+                                
+                            users.stream()
+                                .filter(user -> user.getUserID().equals(transferUser.getUserID()))
+                                .findFirst()
+                                .ifPresent(user -> {
+                                    user.setBalance(transferUser.getBalance());
+                                    user.setTransactionHistory(transferUser.getTransactionHistory());
+                                });
+                                
+                            userManager.saveUsers(users);
+                            animate.animateText("Transfer successful", 25);
+                            transferUserNotFound = false;
                         }
-                    }while(trasnferUserNotFound);
+                    } while(transferUserNotFound);
                 }
                 case "check balance", "balance" -> {
+                    users = userManager.getUsers();
+                    users.stream()
+                        .filter(user -> user.getUserID().equals(currentUser.getUserID()))
+                        .findFirst()
+                        .ifPresent(user -> currentUser = user);
                     currentUser.checkBalance();
                 }
                 case "transaction history", "history" -> {
+                    users = userManager.getUsers();
+                    users.stream()
+                        .filter(user -> user.getUserID().equals(currentUser.getUserID()))
+                        .findFirst()
+                        .ifPresent(user -> currentUser = user);
                     currentUser.printTransactionHistory();
                 }
                 case "delete account", "delete" -> {
@@ -208,9 +289,15 @@ public class App {
                     String userName = sc.nextLine();
                     users.stream()
                         .filter(user -> user.getName().equalsIgnoreCase(userName))
-                        .forEach(user -> animate.animateText(user.toString(), 25));
-                    adminLogsList.add(new AdminLogs(currentUser.getUserID(), currentUser.getName(), "Viewed user details of " + userName));
-                    AdminLogs.saveLogs(adminLogsList);
+                        .findFirst()
+                        .ifPresentOrElse(
+                            user -> {
+                                user.showUserDetails();
+                                adminLogsList.add(new AdminLogs(currentUser.getUserID(), currentUser.getName(), "Viewed user details of " + userName));
+                                AdminLogs.saveLogs(adminLogsList);
+                            },
+                            () -> animate.animateText("User not found", 25)
+                        );
                 }
                 case "delete user", "delete" -> {
                     animate.animateText("Enter user name to delete: ", 25);
@@ -274,5 +361,4 @@ public class App {
             }
         }
     }
-
 }

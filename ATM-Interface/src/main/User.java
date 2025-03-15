@@ -54,45 +54,52 @@ public class User implements Serializable {
         animate.animateText("Enter the Name ", 25);
         this.name = sc.nextLine();
 
-        do {    // Validate the pin
+        do {
         animate.animateText("Enter the Pin ", 25);
         this.pin = sc.nextLine();
         } while (this.pin.length() != 4);
 
-        do {    // Validate the initial deposit
+        do {
         animate.animateText("Enter the Initial Deposit ", 25);
-        this.balance = sc.nextDouble();
+        this.balance = sc.nextDouble(); 
         sc.nextLine();
-        } while (this.balance < 0);
+        } while (this.balance < 100);
 
         this.transactionHistory = new ArrayList<>();
         transactionHistory.add(new Transaction("Deposit", this.balance, "Initial Deposit"));
     }
-    // public void adminCreateAcc(Scanner sc){//admin user
-    //     animate.animateText("Creating a new admin ", 25);
-    //     animate.animateText("Enter the Name ", 25);
-    //     this.name = sc.nextLine();
+    
+    public void adminCreateAcc(Scanner sc) {
+        animate.animateText("Creating a new admin ", 25);
+        animate.animateText("Enter the Name ", 25);
+        this.name = sc.nextLine();
 
-    //     do {    // Validate the pin
-    //     animate.animateText("Enter the Pin ", 25);
-    //     this.pin = sc.nextLine();
-    //     } while (this.pin.length() != 6);
-    //     animate.animateText("Admin created successfully ", 25);
-    // }
+        do {
+        animate.animateText("Enter the Pin ", 25);
+        this.pin = sc.nextLine();
+        } while (this.pin.length() != 6);
+        animate.animateText("Admin created successfully ", 25);
+    }
 
     public void deposit(double amount) {
-        animate.animateText("Successfully deposited "+amount, 25);
-        this.balance += amount;
-        transactionHistory.add(new Transaction("Deposit", amount, "Deposit by user"));
+        if (amount > 0) {
+            this.balance += amount;
+            transactionHistory.add(new Transaction("Deposit", amount, "Amount deposited"));
+            animate.animateText("Successfully deposited $" + amount, 25);
+            animate.animateText("Current balance: $" + this.balance, 25);
+        } else {
+            animate.animateText("Invalid amount", 25);
+        }
     }
 
     public void withdraw(double amount) {
-        if (this.balance - amount < 0) {
-            animate.animateText("Insufficient funds.", 25);
-        } else {
-            animate.animateText("Successfully withdrew "+amount, 25);
+        if (amount > 0 && amount <= this.balance) {
             this.balance -= amount;
-            transactionHistory.add(new Transaction("Withdraw", amount, "Withdraw by user"));
+            transactionHistory.add(new Transaction("Withdrawal", amount, "Amount withdrawn"));
+            animate.animateText("Successfully withdrawn $" + amount, 25);
+            animate.animateText("Current balance: $" + this.balance, 25);
+        } else {
+            animate.animateText("Invalid amount or insufficient balance", 25);
         }
     }
 
@@ -130,6 +137,35 @@ public class User implements Serializable {
         }
     }
 
+    public void showUserDetails() {
+        animate.animateText("""
+                \u2192 User Details
+                ID: %s
+                Name: %s 
+                Balance: $%.2f
+                Account Status: %s
+                """.formatted(
+                    this.userID,
+                    this.name,
+                    this.balance,
+                    this.isAccFrozen ? "Frozen" : "Active"
+                ), 25);
+        
+        if (!transactionHistory.isEmpty()) {
+            animate.animateText("\nLast 5 Transactions:", 25);
+            animate.animateText(String.format("%-20s %-15s %-12s %s", 
+                "Time", "Transaction", "Amount", "Details"), 25);
+            
+            transactionHistory.stream()
+                .limit(5)
+                .forEach(t -> animate.animateText(String.format("%-20s %-15s $%-11.2f %s",
+                    t.getFormattedTimestamp(),
+                    t.getType(),
+                    t.getAmount(),
+                    t.getDetails() + "."), 25));
+        }
+    }
+
     public String IDinitialize() {
         List<User> users = new UserManager().getUsers();
         int id = users.size() + 1;
@@ -146,6 +182,10 @@ public class User implements Serializable {
     public double getBalance() { return this.balance; }
     public boolean getStatus() { return this.isAccFrozen; }
     public boolean isAdmin() { return this.isAdmin; }
+    public List<Transaction> getTransactionHistory() { return this.transactionHistory; }
+    
     // setters 
     public void setStatus(boolean status) { this.isAccFrozen = status; }
+    public void setBalance(double balance) { this.balance = balance; }
+    public void setTransactionHistory(List<Transaction> transactionHistory) { this.transactionHistory = transactionHistory; }
 }

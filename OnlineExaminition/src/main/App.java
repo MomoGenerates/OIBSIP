@@ -7,7 +7,6 @@ import util.*;
 
 public class App {
     private static DatabaseManager databaseManager;
-    private static boolean userExist = false;
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
@@ -255,7 +254,6 @@ public class App {
                     databaseManager.saveStudents(students);
                     databaseManager.saveExams(exams);
                     animate.animateText("Logging out ", 25);
-                    userExist = false;
                     System.out.println("\033[H\033[2J");
                     return;
                 }
@@ -469,7 +467,6 @@ public class App {
                     databaseManager.saveStudents(students);
                     databaseManager.saveExams(exams);
                     animate.animateText("Logging out ", 25);
-                    userExist = false;
                     System.out.println("\033[H\033[2J");
                     return;
                 }
@@ -658,7 +655,6 @@ public class App {
                     databaseManager.saveTeachers(teachers);
                     databaseManager.saveExams(exams);
                     animate.animateText("Logging out ", 25);
-                    userExist = false;
                     System.out.println("\033[H\033[2J");
                     return;
                 }

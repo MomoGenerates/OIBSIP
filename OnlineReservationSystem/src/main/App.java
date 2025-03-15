@@ -17,14 +17,13 @@ public class App {
             System.out.println("\033[H\033[2J");
             animate.animateText("Welcome to Online Reservation System ", 25);
 
-            List<User> users = db.loadUsers();
             List<Passenger> passengers = db.loadPassengers();   
             List<Admin> admins = db.loadAdmins();
-
-            // while (!userExist){
-                animate.animateText("Logging in ", 25);
-                animate.animateText("Enter your username or email: ", 25);
-                String tempUser = sc.nextLine();
+            List<User> users = db.loadUsers(); 
+            
+            animate.animateText("Logging in ", 25);
+            animate.animateText("Enter your username or email: ", 25);
+            String tempUser = sc.nextLine();
                 
             if (tempUser.equalsIgnoreCase("exit") || tempUser.equalsIgnoreCase("log out")) {
                 db.savePassengers(passengers);
@@ -32,43 +31,51 @@ public class App {
                 System.exit(0);
             }
                 
-                users.stream()
-                .filter(user -> user.getName().equalsIgnoreCase(tempUser)  || 
+            users.stream()
+                .filter(user -> user.getName().equalsIgnoreCase(tempUser) || 
                     user.getEmail().equalsIgnoreCase(tempUser))
                 .findFirst()
                 .ifPresentOrElse(
                     user -> { 
                         boolean validateUser = false;
-                    while (!validateUser) {
-                        animate.animateText("Enter your Password: ", 25);
-                        final String userPassword = sc.nextLine();
-                        
-                        if (user.authenticate(tempUser, userPassword)) {
-                            animate.animateText("Welcome " + user.getName(), 25);
-                            validateUser = true;
-                            if (user instanceof Passenger passenger) userMenu(sc, animate, passenger);
-                            else if (user instanceof Admin admin) adminMenu(sc, animate, admin);
-                        } else animate.animateText("Invalid Password ", 25);
+                        while (!validateUser) {
+                            animate.animateText("Enter your Password: ", 25);
+                            final String userPassword = sc.nextLine();
+                            
+                            if (user.authenticate(tempUser, userPassword)) {
+                                animate.animateText("Welcome " + user.getName(), 25);
+                                validateUser = true;
+                                if (user instanceof Passenger passenger) {
+                                    userMenu(sc, animate, passenger);
+                                    passengers.clear();
+                                    passengers.addAll(db.loadPassengers());
+                                }
+                                else if (user instanceof Admin admin) {
+                                    adminMenu(sc, animate, admin);
+                                    admins.clear();
+                                    admins.addAll(db.loadAdmins());
+                                }
+                            } else animate.animateText("Invalid Password ", 25);
+                        }
+                    },
+                    () -> {
+                        animate.animateText("Username not found. Would you like to create a new account?", 25);
+                        String userChoice = sc.nextLine();
+                        if (userChoice.equalsIgnoreCase("yes")) {
+                            animate.animateText("Creating new account", 25);
+                            Passenger newUser = new Passenger(sc, animate);
+                            passengers.add(newUser);
+                            db.savePassengers(passengers);
+                            userMenu(sc, animate, newUser);
+                        } else if (userChoice.equalsIgnoreCase("yes admin")) {
+                            animate.animateText("Creating new admin account", 25);
+                            Admin newUser = new Admin(sc, animate);
+                            admins.add(newUser);
+                            db.saveAdmins(admins);
+                            adminMenu(sc, animate, newUser);
+                        }
                     }
-                },
-                () -> {
-                    animate.animateText("Username not found. Would you like to create a new account?", 25);
-                    String userChoice = sc.nextLine();
-                    if (userChoice.equalsIgnoreCase("yes")) {
-                        animate.animateText("Creating new Acc", 25);
-                        Passenger newUser = new Passenger(sc, animate);
-                        passengers.add(newUser);
-                        db.savePassengers(passengers);
-                        userMenu(sc, animate, (Passenger) newUser);
-                    } else if (userChoice.equalsIgnoreCase("yes admin")) {
-                        animate.animateText("Creating new Admin acc", 25);
-                        Admin newUser = new Admin(sc, animate);
-                        admins.add(newUser);
-                        db.saveAdmins(admins);
-                        adminMenu(sc, animate, newUser);
-                    }
-                }); 
-            // }
+                ); 
         }
     }
 
